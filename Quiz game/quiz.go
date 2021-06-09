@@ -1,18 +1,26 @@
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
 var fileName *string
+var result ResultSet
 
 func init() {
 	fileName = flag.String("fname", "", "CSV File containing quiz questions")
 	flag.Parse()
+
+	result = ResultSet{
+		correct_answer_count: 0,
+		question_count:       0,
+	}
 }
 
 type FileNotPresent struct {
@@ -23,6 +31,11 @@ type FileNotPresent struct {
 type Questions struct {
 	expression string
 	answer     string
+}
+
+type ResultSet struct {
+	correct_answer_count int
+	question_count       int
 }
 
 func (e *FileNotPresent) Error() string {
@@ -57,6 +70,8 @@ func readFile(questions_file string) []Questions {
 }
 
 func main() {
+	reader := bufio.NewReader(os.Stdin)
+
 	if *fileName == "" {
 		err := &FileNotPresent{
 			time.Now(),
@@ -64,6 +79,16 @@ func main() {
 		}
 		fmt.Println(err)
 	}
-	// readFile(*fileName)
-	fmt.Println(readFile(*fileName))
+	questions := readFile(*fileName)
+	result.question_count = len(questions)
+
+	for _, question := range questions {
+		fmt.Println(question.expression, "=")
+		input, _ := reader.ReadString('\n')
+		if strings.TrimSpace(input) == question.answer {
+			result.correct_answer_count = result.correct_answer_count + 1
+		}
+
+	}
+	fmt.Println(result)
 }
