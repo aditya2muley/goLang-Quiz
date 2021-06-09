@@ -14,7 +14,7 @@ var fileName *string
 var timeout *int
 
 func init() {
-	fileName = flag.String("fname", "", "CSV File containing quiz questions")
+	fileName = flag.String("fname", "question.csv", "CSV File containing quiz questions")
 	timeout = flag.Int("timeout-interval", 30, "Time out in seconds")
 	flag.Parse()
 }
