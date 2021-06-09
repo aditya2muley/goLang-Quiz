@@ -11,16 +11,12 @@ import (
 )
 
 var fileName *string
-var result ResultSet
+var timeout *int
 
 func init() {
 	fileName = flag.String("fname", "", "CSV File containing quiz questions")
+	timeout = flag.Int("timeout-interval", 30, "Time out in seconds")
 	flag.Parse()
-
-	result = ResultSet{
-		correct_answer_count: 0,
-		question_count:       0,
-	}
 }
 
 type FileNotPresent struct {
@@ -69,9 +65,29 @@ func readFile(questions_file string) []Questions {
 	return questions_list
 }
 
-func main() {
-	reader := bufio.NewReader(os.Stdin)
+func (res *ResultSet) ask_questions(questions []Questions, reader bufio.Reader) {
+	res.correct_answer_count = 0
+	for _, question := range questions {
+		fmt.Print(question.expression, "=")
+		input, _ := reader.ReadString('\n')
+		if strings.TrimSpace(input) == question.answer {
+			res.correct_answer_count++
+		}
+	}
+}
 
+func display_result(result ResultSet) {
+	fmt.Println("-----------------------------******************-----------------------------------------")
+	fmt.Printf("Correct answers:-%v \nTotal number of questions:-%v", result.correct_answer_count, result.question_count)
+	fmt.Println("\n")
+}
+
+func main() {
+	result := ResultSet{
+		correct_answer_count: 0,
+		question_count:       0,
+	}
+	reader := bufio.NewReader(os.Stdin)
 	if *fileName == "" {
 		err := &FileNotPresent{
 			time.Now(),
@@ -82,13 +98,17 @@ func main() {
 	questions := readFile(*fileName)
 	result.question_count = len(questions)
 
-	for _, question := range questions {
-		fmt.Println(question.expression, "=")
-		input, _ := reader.ReadString('\n')
-		if strings.TrimSpace(input) == question.answer {
-			result.correct_answer_count = result.correct_answer_count + 1
-		}
+	timeout_trigger := time.After(time.Duration(*timeout) * time.Second)
+	result_channel := make(chan ResultSet)
+	go func() {
+		result.ask_questions(questions, *reader)
+		result_channel <- result
+	}()
 
+	select {
+	case <-result_channel:
+	case <-timeout_trigger:
+		fmt.Println("\nTimeout!!!!\n")
 	}
-	fmt.Println(result)
+	display_result(result)
 }
